@@ -277,12 +277,7 @@ public class MemoryWarpScriptStack implements WarpScriptStack, Progressable {
   @Override
   public void drop() throws EmptyStackException {
     if (0 == size) {
-      throw new EmptyStackException() {
-        @Override
-        public String getMessage() {
-          return "Empty stack.";
-        }
-      };
+      throw new InformativeEmptyStackException();
     }
     
     size--;
@@ -303,14 +298,9 @@ public class MemoryWarpScriptStack implements WarpScriptStack, Progressable {
   }
   
   @Override
-  public void dup() throws EmptyStackException {
+  public void dup() throws EmptyStackException, WarpScriptException {
     if (0 == size) {
-      throw new EmptyStackException() {
-        @Override
-        public String getMessage() {
-          return "Empty stack.";
-        }
-      };
+      throw new InformativeEmptyStackException();
     }
     
     Object element = elements[size - 1];
@@ -319,7 +309,7 @@ public class MemoryWarpScriptStack implements WarpScriptStack, Progressable {
   }
 
   @Override
-  public void dupn() throws EmptyStackException, IndexOutOfBoundsException {
+  public void dupn() throws EmptyStackException, IndexOutOfBoundsException, WarpScriptException {
     int n = getn();
     
     if (size < n || n < 0) {
@@ -338,12 +328,7 @@ public class MemoryWarpScriptStack implements WarpScriptStack, Progressable {
   @Override
   public Object pop() throws EmptyStackException {
     if (0 == size) {
-      throw new EmptyStackException() {
-        @Override
-        public String getMessage() {
-          return "Empty stack.";
-        }
-      };
+      throw new InformativeEmptyStackException();
     }
 
     Object element = elements[size - 1];
@@ -377,12 +362,6 @@ public class MemoryWarpScriptStack implements WarpScriptStack, Progressable {
   
   @Override
   public void push(Object o) throws WarpScriptException {
-    
-    if (size > this.maxdepth) {
-      Sensision.update(SensisionConstants.SENSISION_CLASS_WARPSCRIPT_STACKDEPTH_EXCEEDED, Sensision.EMPTY_LABELS, 1);
-      throw new WarpScriptException("Stack depth would exceed set limit of " + this.maxdepth);
-    }
-    
     ensureCapacity(1);
     elements[size++] = o;
   }
@@ -390,12 +369,7 @@ public class MemoryWarpScriptStack implements WarpScriptStack, Progressable {
   @Override
   public void swap() throws WarpScriptException, EmptyStackException, IndexOutOfBoundsException {
     if (0 == size) {
-      throw new EmptyStackException() {
-        @Override
-        public String getMessage() {
-          return "Empty stack.";
-        }
-      };
+      throw new InformativeEmptyStackException();
     }
     
     if (size < 2) {
@@ -411,12 +385,7 @@ public class MemoryWarpScriptStack implements WarpScriptStack, Progressable {
   @Override
   public Object peek() throws EmptyStackException {
     if (0 == size) {
-      throw new EmptyStackException() {
-        @Override
-        public String getMessage() {
-          return "Empty stack.";
-        }
-      };
+      throw new InformativeEmptyStackException();
     }
 
     return elements[size - 1];
@@ -426,12 +395,7 @@ public class MemoryWarpScriptStack implements WarpScriptStack, Progressable {
   public void rot() throws EmptyStackException, IndexOutOfBoundsException {
     
     if (0 == size) {
-      throw new EmptyStackException() {
-        @Override
-        public String getMessage() {
-          return "Empty stack.";
-        }
-      };
+      throw new InformativeEmptyStackException();
     }
     
     if (size < 3) {
@@ -465,19 +429,15 @@ public class MemoryWarpScriptStack implements WarpScriptStack, Progressable {
   }
   
   @Override
-  public Object peekn() throws EmptyStackException, IndexOutOfBoundsException {
+  public Object peekn() throws WarpScriptException {
     int n = getn();
     
-    if (size < n - 1 || n < 0) {
-      throw new IndexOutOfBoundsException("Index out of bound.");
-    }
-    
-    return elements[size - 1 - n];
+    return get(n);
   }
   
   @Override
   public Object get(int n) throws WarpScriptException {
-    if (size < n - 1 || n < 0) {
+    if (size - 1 < n || n < 0) {
       throw new WarpScriptException("Invalid level.");
     }
     
@@ -495,12 +455,7 @@ public class MemoryWarpScriptStack implements WarpScriptStack, Progressable {
    */
   private int getn() throws EmptyStackException, IndexOutOfBoundsException {
     if (0 == size) {
-      throw new EmptyStackException() {
-        @Override
-        public String getMessage() {
-          return "Empty stack.";
-        }
-      };
+      throw new InformativeEmptyStackException();
     }
     
     //
@@ -1151,7 +1106,7 @@ public class MemoryWarpScriptStack implements WarpScriptStack, Progressable {
   }
   
   @Override
-  public void pick() throws EmptyStackException, IndexOutOfBoundsException {
+  public void pick() throws EmptyStackException, IndexOutOfBoundsException, WarpScriptException {
     int n = getn();
     
     if (size < n || n < 0) {
@@ -1572,12 +1527,17 @@ public class MemoryWarpScriptStack implements WarpScriptStack, Progressable {
     return stack;
   }
   
-  private void ensureCapacity(int n) {
+  private void ensureCapacity(int n) throws WarpScriptException {
     if (size + n < elements.length) {
       return;
     }
+
+    if (size + n > this.maxdepth) {
+      Sensision.update(SensisionConstants.SENSISION_CLASS_WARPSCRIPT_STACKDEPTH_EXCEEDED, Sensision.EMPTY_LABELS, 1);
+      throw new WarpScriptException("Stack depth would exceed set limit of " + this.maxdepth);
+    }
     
-    int newCapacity = elements.length + (elements.length >> 1) + n;
+    int newCapacity = Math.min(this.maxdepth, elements.length + (elements.length >> 1) + n);
     elements = Arrays.copyOf(elements, newCapacity);
   }
   
