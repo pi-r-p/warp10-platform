@@ -588,6 +588,7 @@ public class Ingress extends AbstractHandler implements Runnable {
     if (useHttp) {
       int port = Integer.valueOf(props.getProperty(Configuration.INGRESS_PORT));
       String host = props.getProperty(Configuration.INGRESS_HOST);
+      int tcpBacklog = Integer.valueOf(props.getProperty(Configuration.INGRESS_TCP_BACKLOG, "0"));
       int acceptors = Integer.valueOf(props.getProperty(Configuration.INGRESS_ACCEPTORS));
       int selectors = Integer.valueOf(props.getProperty(Configuration.INGRESS_SELECTORS));
       long idleTimeout = Long.parseLong(props.getProperty(Configuration.INGRESS_IDLE_TIMEOUT));
@@ -596,6 +597,7 @@ public class Ingress extends AbstractHandler implements Runnable {
       connector.setIdleTimeout(idleTimeout);
       connector.setPort(port);
       connector.setHost(host);
+      connector.setAcceptQueueSize(tcpBacklog);
       connector.setName("Continuum Ingress HTTP");
       
       connectors.add(connector);
@@ -2187,7 +2189,15 @@ public class Ingress extends AbstractHandler implements Runnable {
       Set<BigInteger> bis = new HashSet<BigInteger>();
 
       synchronized(this.metadataCache) {
-        bis.addAll(this.metadataCache.keySet());
+        boolean error = false;
+        do {
+          try {
+            error = false;          
+            bis.addAll(this.metadataCache.keySet());
+          } catch (ConcurrentModificationException cme) {
+            error = true;
+          }
+        } while (error);
       }
       
       Iterator<BigInteger> iter = bis.iterator();
