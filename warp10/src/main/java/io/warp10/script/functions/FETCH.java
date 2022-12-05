@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -34,6 +35,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.GZIPInputStream;
 
+import org.apache.commons.collections.Unmodifiable;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.thrift.TDeserializer;
@@ -451,7 +453,7 @@ public class FETCH extends NamedWarpScriptFunction implements WarpScriptStackFun
       } else {
         clsSels.add(params.get(PARAM_CLASS).toString());
 
-        Map<String,String> labelSelectors = (Map<String,String>) params.get(PARAM_LABELS);
+        Map<String, String> labelSelectors = new LinkedHashMap<>((Map<String, String>) params.get(PARAM_LABELS));
         labelSelectors.remove(Constants.PRODUCER_LABEL);
         labelSelectors.remove(Constants.OWNER_LABEL);
         labelSelectors.remove(Constants.APPLICATION_LABEL);
