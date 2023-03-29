@@ -32,8 +32,6 @@ public class WarpURLEncoder {
   public static final String encode(String input, String encoding) throws UnsupportedEncodingException {
     String encoded = URLEncoder.encode(input, encoding);
     
-    char[] chars = UnsafeString.getChars(encoded);
-
     StringBuilder sb = null;
 
     int lastidx = 0;
@@ -43,12 +41,12 @@ public class WarpURLEncoder {
     // Replace '+' by %20
     //
 
-    while(idx < chars.length) {
-      if ('+' == chars[idx]) {
+    while(idx < encoded.length()) {
+      if ('+' == encoded.charAt(idx)) {
         if (null == sb) {
           sb = new StringBuilder(encoded.length());
         }
-        sb.append(chars, lastidx, idx - lastidx);
+        sb.append(encoded, lastidx, idx);
         sb.append("%20");
         lastidx = ++idx;
       } else {
@@ -60,8 +58,8 @@ public class WarpURLEncoder {
       return encoded;
     }
     
-    if (idx > lastidx) {
-      sb.append(chars, lastidx, idx - lastidx);
+    if (lastidx < encoded.length()) {
+      sb.append(encoded, lastidx, encoded.length());
     }
     
     return sb.toString();

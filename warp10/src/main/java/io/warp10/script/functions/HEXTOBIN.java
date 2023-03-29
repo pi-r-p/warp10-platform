@@ -45,10 +45,10 @@ public class HEXTOBIN extends NamedWarpScriptFunction implements WarpScriptStack
     
     StringBuilder sb = new StringBuilder();
     
-    char[] c = UnsafeString.getChars(o.toString());
+    String s = o.toString();
     
-    for (int i = 0; i < c.length; i++) {
-      switch(c[i]) {
+    for (int i = 0; i < s.length(); i++) {
+      switch(s.charAt(i)) {
         case '0':
           sb.append("0000");
           break;
@@ -104,7 +104,7 @@ public class HEXTOBIN extends NamedWarpScriptFunction implements WarpScriptStack
           sb.append("1111");
           break;
         default:
-          throw new WarpScriptException(getName() + " encountered an invalid hex character '" + c[i] + "'.");
+          throw new WarpScriptException(getName() + " encountered an invalid hex character '" + s.charAt(i) + "'.");
       }          
     }
 

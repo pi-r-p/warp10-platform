@@ -16,6 +16,17 @@
 
 package io.warp10.script;
 
+//import io.warp10.json.JsonUtils;
+//import io.warp10.WarpURLEncoder;
+//import io.warp10.continuum.gts.GTSHelper;
+//import io.warp10.continuum.gts.GeoTimeSerie;
+//import io.warp10.continuum.gts.UnsafeString;
+//import io.warp10.continuum.gts.GeoTimeSerie.TYPE;
+//import io.warp10.continuum.store.thrift.data.Metadata;
+//import io.warp10.script.WarpScriptStack.Macro;
+//import io.warp10.script.functions.SNAPSHOT.Snapshotable;
+//import io.warp10.warp.sdk.WarpScriptJavaFunctionGTS;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -99,8 +110,8 @@ public class StackUtils {
         //
 
         line = UnsafeString.sanitizeStrings(line);
-
-        if (-1 != UnsafeString.indexOf(line, ' ')) {
+        
+        if (-1 != line.indexOf(' ')) {
           //statements = line.split(" +");
           statements = UnsafeString.split(line, ' ');
         } else {
@@ -162,7 +173,6 @@ public class StackUtils {
     } catch(IOException ioe) {
       throw new WarpScriptException(ioe);
     }
-
 
     return sb;
   }
