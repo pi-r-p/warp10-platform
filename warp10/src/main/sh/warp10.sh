@@ -75,12 +75,12 @@ location of your Java installation."
 getConfigFiles() {
   # Get configuration files from standard directory
   if [ -d "${WARP10_CONFIG_DIR}" ]; then
-    CONFIG_FILES=$(find "${WARP10_CONFIG_DIR}" -type f -name \*.conf | sort | tr '\n' ' ' 2>/dev/null)
+    CONFIG_FILES=$(find -L "${WARP10_CONFIG_DIR}" -type f -name \*.conf | sort | tr '\n' ' ' 2>/dev/null)
   fi
 
   # Get additional configuration files from extra directory
   if [ -d "${WARP10_EXT_CONFIG_DIR:-}" ]; then
-    CONFIG_FILES="${CONFIG_FILES} $(find "${WARP10_EXT_CONFIG_DIR}" -type f -name \*.conf | sort | tr '\n' ' ' 2>/dev/null)"
+    CONFIG_FILES="${CONFIG_FILES} $(find -L "${WARP10_EXT_CONFIG_DIR}" -type f -name \*.conf | sort | tr '\n' ' ' 2>/dev/null)"
   fi
 }
 
@@ -102,9 +102,15 @@ getWarp10Home() {
 
 checkRam() {
   if [ "1023m" = "${WARP10_HEAP}" ] || [ "1023m" = "${WARP10_HEAP_MAX}" ]; then
-    warn "#### WARNING ####
-## Warp 10 was launched with the default RAM setting (i.e. WARP10_HEAP=1023m and/or WARP10_HEAP_MAX=1023m).
-## Please edit ${WARP10_HOME}/etc/warp10-env.sh to change the default values of WARP10_HEAD and WARP10_HEAP_MAX."
+    warn "
+#################
+#### WARNING ####
+#################
+##
+##  Warp 10 was launched with the default RAM setting (i.e. WARP10_HEAP=1023m and/or WARP10_HEAP_MAX=1023m).
+##  Please edit ${WARP10_HOME}/etc/warp10-env.sh to change the default values of WARP10_HEAD and WARP10_HEAP_MAX.
+##
+"
   fi
 }
 
@@ -160,14 +166,18 @@ init() {
     die "ERROR: Configuration files already exist - Abort initialization."
   fi
 
-  echo "//
-// This file contains configurations generated during initialization step.
-//
-" >"${WARP10_CONFIG_DIR}/99-init.conf"
-
   WARP10_HOME_ESCAPED=$(echo "${WARP10_HOME}" | sed 's/\\/\\\\/g')        # Escape '\'
   WARP10_HOME_ESCAPED=$(echo "${WARP10_HOME_ESCAPED}" | sed 's/\&/\\&/g') # Escape '&'
   WARP10_HOME_ESCAPED=$(echo "${WARP10_HOME_ESCAPED}" | sed 's/|/\\|/g')  # Escape '|' (separator for sed)
+
+  echo "//
+// This file contains configurations generated during initialization step.
+//
+// File generated on $(TZ=UTC date +%Y-%m-%dT%H:%M:%SZ)
+//
+
+warp10.home = ${WARP10_HOME_ESCAPED}" >"${WARP10_CONFIG_DIR}/99-init.conf"
+
 
   ##
   ## Copy the template configuration file
@@ -193,15 +203,14 @@ postInit() {
   ## Generate AES and hash keys
   ##
   echo
-  echo "Generating AES and hash keys"
-  res=$(${JAVACMD} -cp "${WARP10_JAR}" -Dfile.encoding=UTF-8 io.warp10.GenerateCryptoKeys)
+  echo "Generating cryptographic keys"
+
   echo "
 //
-// AES and Hash definition
+// Cryptographic keys definition
 //
-
-$(echo "$res" | grep -E 'class.hash.key|labels.hash.key|token.hash.key|app.hash.key|token.aes.key|scripts.aes.key|metasets.aes.key|logging.aes.key|fetch.hash.key')
 " >>"${WARP10_CONFIG_DIR}/99-init.conf"
+  ${JAVACMD} -cp "${WARP10_JAR}" -Dfile.encoding=UTF-8 io.warp10.GenerateCryptoKeys ${TEMPLATE} >> "${WARP10_CONFIG_DIR}/99-init.conf"
 
   echo
   echo "Warp 10 configuration has been generated in${WARP10_CONFIG_DIR}"
@@ -223,11 +232,9 @@ leveldbConf() {
   init
 
   echo "
-standalone.home = ${WARP10_HOME_ESCAPED}" >>"${WARP10_CONFIG_DIR}/99-init.conf"
-  echo "backend = leveldb" >>"${WARP10_CONFIG_DIR}/99-init.conf"
+backend = leveldb" >>"${WARP10_CONFIG_DIR}/99-init.conf"
   mv "${WARP10_CONFIG_DIR}/10-fdb.conf" "${WARP10_CONFIG_DIR}/10-fdb.conf.DISABLE"
   getConfigFiles
-
 
   ##
   ##  Init LevelDB
@@ -250,13 +257,14 @@ standalonePlusConf() {
 
   echo "
 backend = fdb
-fdb.clusterfile=" >>"${WARP10_CONFIG_DIR}/99-init.conf"
+fdb.clusterfile=\${warp10.home}/etc/fdb.cluster" >>"${WARP10_CONFIG_DIR}/99-init.conf"
   mv "${WARP10_CONFIG_DIR}/10-leveldb.conf" "${WARP10_CONFIG_DIR}/10-leveldb.conf.DISABLE"
   getConfigFiles
 
   echo
   echo "Please define your FoundationDB cluster with the 'fdb.clusterfile' key"
   echo "See ${WARP10_CONFIG_DIR}/10-fdb.conf for more settings."
+  echo
   postInit
 }
 
@@ -275,6 +283,7 @@ backend = memory" >>"${WARP10_CONFIG_DIR}/99-init.conf"
   echo "in.memory.chunk.length = 86400000000" >>"${WARP10_CONFIG_DIR}/99-init.conf"
   echo "in.memory.load = ${WARP10_HOME}/memory.dump" >>"${WARP10_CONFIG_DIR}/99-init.conf"
   echo "in.memory.dump = ${WARP10_HOME}/memory.dump" >>"${WARP10_CONFIG_DIR}/99-init.conf"
+  echo
 
   postInit
 }
@@ -297,6 +306,9 @@ start() {
     die "ERROR: Start failed - A Warp 10 instance is currently running"
   fi
 
+  # display a warning
+  checkRam
+
   #
   # Start Warp10 instance.
   # By default, standard and error output is redirected to warp10.log file, and error output is duplicated to standard output
@@ -315,11 +327,7 @@ start() {
   sleep 5
   if ! isStarted; then
     die "Start failed! - See ${WARP10_HOME}/logs/warp10.log for more details"
-  else
-    # display a warning
-    checkRam
   fi
-
 }
 
 stop() {
@@ -344,15 +352,13 @@ status() {
   else
     echo "No instance of Warp 10 is currently running"
   fi
-
-  checkRam
 }
 
 tokengen() {
   if [ "$#" -ne 2 ]; then
     die "Usage: $0 tokengen envelope.mc2"
   fi
-  ${JAVACMD} -cp "${WARP10_CP}" -Dlog4j.configuration=file:"${LOG4J_CONF}" -Dfile.encoding=UTF-8 io.warp10.TokenGen ${CONFIG_FILES} "$2" 2>/dev/null
+  ${JAVACMD} -cp "${WARP10_CP}" -Dlog4j.configuration=file:"${LOG4J_CONF}" -Dfile.encoding=UTF-8 io.warp10.TokenGen ${CONFIG_FILES} "$2"
 }
 
 run() {
@@ -363,23 +369,25 @@ run() {
 }
 
 repair() {
+  if [ "$#" -ne 2 ]; then
+    die "Usage: $0 repair LEVELDB_HOME"
+  fi
   isWarp10User
 
   if isStarted; then
     die "Operation has been cancelled! - Warp 10 instance must be stopped for repair"
   else
-    # Retrieve LevelDB Home
-    # shellcheck disable=SC2086
-    CONFIG_KEYS=$(${JAVACMD} -cp "${WARP10_JAR}" -Dfile.encoding=UTF-8 io.warp10.WarpConfig ${CONFIG_FILES} . 'leveldb.home' 2>/dev/null | grep -e '^@CONF@ ' | sed -e 's/^@CONF@ //')
-    LEVELDB_HOME="$(echo "${CONFIG_KEYS}" | grep -e '^leveldb\.home=' | sed -e 's/^.*=//')"
+    if [ ! -d "$2" ]; then
+      die "LEVELDB_HOME: '$2' does not exist"
+    fi
     echo "Repairing LevelDB..."
-    ${JAVACMD} -cp "${WARP10_JAR}" -Dfile.encoding=UTF-8 io.warp10.leveldb.WarpRepair "${LEVELDB_HOME}"
+    ${JAVACMD} -cp "${WARP10_JAR}" -Dfile.encoding=UTF-8 io.warp10.leveldb.WarpRepair "$2"
   fi
 }
 
 compact() {
-  if [ "$#" -ne 3 ]; then
-      die "Usage: $0 compact STARTKEY(hex) ENDKEY(hex)"
+  if [ "$#" -ne 4 ]; then
+      die "Usage: $0 compact LEVELDB_HOME STARTKEY(hex) ENDKEY(hex)"
   fi
 
   isWarp10User
@@ -387,12 +395,11 @@ compact() {
   if isStarted; then
     die "Operation has been cancelled! - Warp 10 instance must be stopped for compaction"
   else
-    # Retrieve LevelDB Home
-    # shellcheck disable=SC2086
-    CONFIG_KEYS=$(${JAVACMD} -cp "${WARP10_JAR}" -Dfile.encoding=UTF-8 io.warp10.WarpConfig ${CONFIG_FILES} . 'leveldb.home' 2>/dev/null | grep -e '^@CONF@ ' | sed -e 's/^@CONF@ //')
-    LEVELDB_HOME="$(echo "${CONFIG_KEYS}" | grep -e '^leveldb\.home=' | sed -e 's/^.*=//')"
+    if [ ! -d "$2" ]; then
+      die "LEVELDB_HOME: '$2' does not exist"
+    fi
     echo "Compacting LevelDB..."
-    ${JAVACMD} -cp "${WARP10_JAR}" io.warp10.leveldb.WarpCompact "${LEVELDB_HOME}" "$2" "$3"
+    ${JAVACMD} -cp "${WARP10_JAR}" io.warp10.leveldb.WarpCompact "$2" "$3" "$4"
   fi
 }
 
@@ -489,7 +496,7 @@ run)
   run "$@"
   ;;
 repair)
-  repair
+  repair "$@"
   ;;
 compact)
   compact "$@"
