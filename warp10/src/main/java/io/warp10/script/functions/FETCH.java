@@ -50,6 +50,7 @@ import org.joda.time.format.ISOPeriodFormat;
 
 import com.google.common.primitives.Longs;
 
+import io.warp10.ThriftUtils;
 import io.warp10.WarpDist;
 import io.warp10.continuum.MetadataUtils;
 import io.warp10.continuum.TimeSource;
@@ -318,13 +319,16 @@ public class FETCH extends NamedWarpScriptFunction implements WarpScriptStackFun
 
     long gskip = 0L;
     long gcount = Long.MAX_VALUE;
+    boolean mustSort = false;
 
     if (params.get(PARAM_GSKIP) instanceof Long) {
       gskip = ((Long) params.get(PARAM_GSKIP)).longValue();
+      mustSort = true;
     }
 
     if (params.get(PARAM_GCOUNT) instanceof Long) {
       gcount = ((Long) params.get(PARAM_GCOUNT)).longValue();
+      mustSort = true;
     }
 
     if (params.containsKey(PARAM_METASET)) {
@@ -495,6 +499,7 @@ public class FETCH extends NamedWarpScriptFunction implements WarpScriptStackFun
       }
 
       DirectoryRequest drequest = new DirectoryRequest();
+      drequest.setSorted(mustSort);
       drequest.setClassSelectors(clsSels);
       drequest.setLabelsSelectors(lblsSels);
 
@@ -1125,7 +1130,7 @@ public class FETCH extends NamedWarpScriptFunction implements WarpScriptStackFun
       }
 
       metaset = new MetaSet();
-      TDeserializer deser = new TDeserializer(new TCompactProtocol.Factory());
+      TDeserializer deser = ThriftUtils.getTDeserializer(new TCompactProtocol.Factory());
 
       try {
         deser.deserialize(metaset, (byte[]) ms);

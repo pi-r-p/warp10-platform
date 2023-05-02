@@ -1,5 +1,5 @@
 //
-//   Copyright 2018-2022  SenX S.A.S.
+//   Copyright 2018-2023  SenX S.A.S.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -85,6 +85,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.primitives.Longs;
 
 import io.warp10.SSLUtils;
+import io.warp10.ThriftUtils;
 import io.warp10.ThrowableUtils;
 import io.warp10.WarpConfig;
 import io.warp10.WarpManager;
@@ -1118,7 +1119,7 @@ public class Ingress extends AbstractHandler implements Runnable {
                 metadata.setLastActivity(nowms);
               }
 
-              TSerializer serializer = new TSerializer(new TCompactProtocol.Factory());
+              TSerializer serializer = ThriftUtils.getTSerializer(new TCompactProtocol.Factory());
               try {
                 pushMetadataMessage(bytes, serializer.serialize(metadata));
 
@@ -1594,13 +1595,16 @@ public class Ingress extends AbstractHandler implements Runnable {
 
       long gskip = 0L;
       long gcount = Long.MAX_VALUE;
+      boolean mustSort = false;
 
       if (null != request.getParameter(Constants.HTTP_PARAM_GSKIP)) {
         gskip = Long.parseLong(request.getParameter(Constants.HTTP_PARAM_GSKIP));
+        mustSort = true;
       }
 
       if (null != request.getParameter(Constants.HTTP_PARAM_GCOUNT)) {
         gcount = Long.parseLong(request.getParameter(Constants.HTTP_PARAM_GCOUNT));
+        mustSort = true;
       }
 
       //
@@ -1672,9 +1676,10 @@ public class Ingress extends AbstractHandler implements Runnable {
 
         FileWriter writer = new FileWriter(cache);
 
-        TSerializer serializer = new TSerializer(new TCompactProtocol.Factory());
+        TSerializer serializer = ThriftUtils.getTSerializer(new TCompactProtocol.Factory());
 
         DirectoryRequest drequest = new DirectoryRequest();
+        drequest.setSorted(mustSort);
 
         Long activeAfter = null == request.getParameter(Constants.HTTP_PARAM_ACTIVEAFTER) ? null : Long.parseLong(request.getParameter(Constants.HTTP_PARAM_ACTIVEAFTER));
         Long quietAfter = null == request.getParameter(Constants.HTTP_PARAM_QUIETAFTER) ? null : Long.parseLong(request.getParameter(Constants.HTTP_PARAM_QUIETAFTER));
@@ -1781,7 +1786,7 @@ public class Ingress extends AbstractHandler implements Runnable {
           private Metadata current = null;
           private boolean done = false;
 
-          private TDeserializer deserializer = new TDeserializer(new TCompactProtocol.Factory());
+          private TDeserializer deserializer = ThriftUtils.getTDeserializer(new TCompactProtocol.Factory());
 
           @Override
           public boolean hasNext() {
@@ -1897,6 +1902,7 @@ public class Ingress extends AbstractHandler implements Runnable {
       } else {
 
         DirectoryRequest drequest = new DirectoryRequest();
+        drequest.setSorted(mustSort);
         drequest.setClassSelectors(clsSels);
         drequest.setLabelsSelectors(lblsSels);
 
@@ -1991,9 +1997,9 @@ public class Ingress extends AbstractHandler implements Runnable {
         if (null != this.plugin) {
           this.plugin.flush(this);
         }
+        Sensision.update(SensisionConstants.SENSISION_CLASS_CONTINUUM_INGRESS_DELETE_REQUESTS, sensisionLabels, 1);
+        Sensision.update(SensisionConstants.SENSISION_CLASS_CONTINUUM_INGRESS_DELETE_GTS, sensisionLabels, gts);
       }
-      Sensision.update(SensisionConstants.SENSISION_CLASS_CONTINUUM_INGRESS_DELETE_REQUESTS, sensisionLabels, 1);
-      Sensision.update(SensisionConstants.SENSISION_CLASS_CONTINUUM_INGRESS_DELETE_GTS, sensisionLabels, gts);
     }
 
     response.setStatus(HttpServletResponse.SC_OK);
@@ -2028,7 +2034,7 @@ public class Ingress extends AbstractHandler implements Runnable {
     metadata.setClassId(GTSHelper.classId(this.classKey, metadata.getName()));
     metadata.setLabelsId(GTSHelper.labelsId(this.labelsKey, metadata.getLabels()));
 
-    TSerializer serializer = new TSerializer(new TCompactProtocol.Factory());
+    TSerializer serializer = ThriftUtils.getTSerializer(new TCompactProtocol.Factory());
     try {
       byte[] bytes = new byte[16];
       GTSHelper.fillGTSIds(bytes, 0, metadata.getClassId(), metadata.getLabelsId());
@@ -2186,7 +2192,7 @@ public class Ingress extends AbstractHandler implements Runnable {
       //bb.putLong(encoder.getClassId());
       //bb.putLong(encoder.getLabelsId());
 
-      TSerializer serializer = new TSerializer(new TCompactProtocol.Factory());
+      TSerializer serializer = ThriftUtils.getTSerializer(new TCompactProtocol.Factory());
 
       byte[] msgbytes = null;
 
