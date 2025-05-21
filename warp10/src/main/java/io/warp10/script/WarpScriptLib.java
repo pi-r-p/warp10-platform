@@ -1,5 +1,5 @@
 //
-//   Copyright 2019-2024  SenX S.A.S.
+//   Copyright 2019-2025  SenX S.A.S.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -360,6 +360,8 @@ import io.warp10.script.functions.JSONSTRICT;
 import io.warp10.script.functions.JSONTO;
 import io.warp10.script.functions.KEYLIST;
 import io.warp10.script.functions.KURTOSIS;
+import io.warp10.script.functions.KVLOAD;
+import io.warp10.script.functions.KVSTORE;
 import io.warp10.script.functions.LABELS;
 import io.warp10.script.functions.LASTACTIVITY;
 import io.warp10.script.functions.LASTBUCKET;
@@ -539,6 +541,7 @@ import io.warp10.script.functions.RUN;
 import io.warp10.script.functions.RUNNERAT;
 import io.warp10.script.functions.RUNNERIN;
 import io.warp10.script.functions.RUNNERNONCE;
+import io.warp10.script.functions.RUNNERPATH;
 import io.warp10.script.functions.RUNR;
 import io.warp10.script.functions.RVALUESORT;
 import io.warp10.script.functions.SAVE;
@@ -1106,8 +1109,8 @@ public class WarpScriptLib {
   public static final String BDTESTBIT = "BDTESTBIT";
   public static final String BDXOR = "BDXOR";
 
-
-
+  public static final String KVLOAD = "KVLOAD";
+  public static final String KVSTORE = "KVSTORE";
 
   public static final String RSAPUBLIC = "RSAPUBLIC";
   public static final String RSAPRIVATE = "RSAPRIVATE";
@@ -1356,8 +1359,11 @@ public class WarpScriptLib {
   public static final String AESWRAP = "AESWRAP";
   public static final String AESUNWRAP = "AESUNWRAP";
   public static final String RUNNERNONCE = "RUNNERNONCE";
+  public static final String RUNNERPATH = "RUNNERPATH";
   public static final String RUNNERAT = "RUNNERAT";
   public static final String RUNNERIN = "RUNNERIN";
+  public static final String RUNNERFORCE = "RUNNERFORCE";
+  public static final String RUNNERS = "RUNNERS";
   public static final String GZIP = "GZIP";
   public static final String UNGZIP = "UNGZIP";
   public static final String DEFLATE = "DEFLATE";
@@ -2304,6 +2310,7 @@ public class WarpScriptLib {
     addNamedWarpScriptFunction(new AESUNWRAP(AESUNWRAP));
 
     addNamedWarpScriptFunction(new RUNNERNONCE(RUNNERNONCE));
+    addNamedWarpScriptFunction(new RUNNERPATH(RUNNERPATH));
     addNamedWarpScriptFunction(new RUNNERAT(RUNNERAT));
     addNamedWarpScriptFunction(new RUNNERIN(RUNNERIN));
 
@@ -2954,6 +2961,9 @@ public class WarpScriptLib {
     addNamedWarpScriptFunction(new BDRAND(SBDRAND, true));
     addNamedWarpScriptFunction(new BDPROBABLEPRIME(BDPROBABLEPRIME, false));
     addNamedWarpScriptFunction(new BDPROBABLEPRIME(SBDPROBABLEPRIME, true));
+
+    addNamedWarpScriptFunction(new KVSTORE(KVSTORE));
+    addNamedWarpScriptFunction(new KVLOAD(KVLOAD));
 
     //
     // Linear Algebra
